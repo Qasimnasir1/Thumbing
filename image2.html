@@ -1,0 +1,983 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Studio Pro | Gen & Face Swap</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #8b5cf6; /* Violet/Purple */
+            --primary-hover: #7c3aed;
+            --secondary: #10b981; /* Emerald/Green for Analyze */
+            --accent: #f43f5e; /* Rose for Favs */
+            --bg-dark: #0f1115;
+            --bg-card: #181b21;
+            --bg-input: #23262d;
+            --border: #2d313a;
+            --text: #ffffff;
+            --text-muted: #94a3b8;
+            --glass: rgba(24, 27, 33, 0.95);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: var(--bg-dark);
+            color: var(--text);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: var(--bg-dark); }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+        .app-container {
+            max-width: 1800px;
+            margin: 0 auto;
+            padding: 20px;
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 24px;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        @media (max-width: 1100px) {
+            .app-container { 
+                grid-template-columns: 1fr; 
+                height: auto; 
+                overflow-y: auto;
+            }
+            .sidebar { height: auto !important; overflow: visible !important; }
+            .gallery-scroll { height: 600px !important; }
+        }
+
+        /* --- LEFT SIDE: GALLERY --- */
+        .main-content {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            height: 100%;
+            min-width: 0;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 24px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+        }
+
+        .logo { display: flex; align-items: center; gap: 12px; }
+        .logo-icon { font-size: 24px; }
+        .logo h1 { font-size: 1.25rem; font-weight: 800; background: linear-gradient(to right, #fff, #a78bfa); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+
+        .gallery-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .gallery-header {
+            padding: 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .gallery-scroll {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .gallery-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 16px;
+        }
+
+        .gallery-item {
+            position: relative;
+            border-radius: 12px;
+            overflow: hidden;
+            aspect-ratio: 1;
+            background: var(--bg-input);
+            cursor: pointer;
+            border: 1px solid transparent;
+            transition: all 0.2s;
+        }
+        .gallery-item:hover { border-color: var(--primary); transform: translateY(-2px); }
+        .gallery-item img { width: 100%; height: 100%; object-fit: cover; }
+        
+        .gallery-overlay {
+            position: absolute; inset: 0;
+            background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
+            opacity: 0; transition: 0.2s;
+            display: flex; align-items: flex-end; justify-content: flex-end;
+            padding: 10px;
+        }
+        .gallery-item:hover .gallery-overlay { opacity: 1; }
+
+        /* --- RIGHT SIDE: SIDEBAR --- */
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            height: 100%;
+            overflow-y: auto;
+            padding-right: 4px;
+        }
+
+        .stats-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .stat-card { background: var(--bg-card); border: 1px solid var(--border); padding: 16px; border-radius: 12px; text-align: center; }
+        .stat-val { font-size: 24px; font-weight: 700; color: var(--primary); margin-bottom: 4px; }
+        .stat-label { font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+
+        .tabs {
+            background: var(--bg-card); padding: 6px; border-radius: 12px; display: flex; gap: 8px; border: 1px solid var(--border);
+        }
+        .tab {
+            flex: 1; padding: 10px; text-align: center; border-radius: 8px; cursor: pointer;
+            font-size: 14px; font-weight: 600; color: var(--text-muted); transition: all 0.2s;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+        }
+        .tab.active { background: var(--primary); color: white; box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3); }
+        .tab:hover:not(.active) { background: var(--bg-input); color: var(--text); }
+
+        .controls { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 20px; }
+        .section-header { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 700; color: #fff; margin-bottom: 12px; }
+
+        .input-group { margin-bottom: 16px; position: relative; }
+        label { display: block; font-size: 12px; font-weight: 600; color: var(--text-muted); margin-bottom: 8px; }
+        
+        input, select, textarea {
+            width: 100%; background: var(--bg-input); border: 1px solid var(--border); color: var(--text);
+            padding: 12px; border-radius: 10px; font-family: inherit; font-size: 13px; transition: 0.2s;
+        }
+        input:focus, textarea:focus, select:focus { outline: none; border-color: var(--primary); }
+
+        #youtubeSection { display: none; margin-bottom: 24px; animation: slideDown 0.3s ease; }
+        .yt-preview { margin-top: 12px; border-radius: 12px; overflow: hidden; border: 1px solid var(--border); position: relative; }
+        .yt-preview img { width: 100%; display: block; }
+        
+        .btn-analyze {
+            width: 100%; background: var(--secondary); color: white; border: none; padding: 12px;
+            border-radius: 0 0 12px 12px; font-weight: 700; cursor: pointer;
+            display: flex; align-items: center; justify-content: center; gap: 8px; transition: 0.2s;
+        }
+        .btn-analyze:hover { background: #059669; }
+        .btn-fetch { background: var(--primary); color: white; border: none; padding: 0 16px; border-radius: 10px; font-weight: 600; cursor: pointer; }
+
+        .prompt-wrapper { position: relative; }
+        .prompt-actions {
+            position: absolute; bottom: 8px; right: 8px; display: flex; gap: 4px;
+            background: var(--bg-input); padding: 4px; border-radius: 6px;
+        }
+        .p-btn {
+            background: transparent; border: none; color: var(--text-muted);
+            width: 24px; height: 24px; border-radius: 4px; cursor: pointer;
+        }
+        .p-btn:hover { background: var(--bg-card); color: var(--text); }
+
+        .style-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+        .style-chip {
+            padding: 8px; font-size: 11px; background: var(--bg-input); border: 1px solid var(--border);
+            border-radius: 20px; color: var(--text-muted); cursor: pointer; text-align: center; transition: 0.2s;
+        }
+        .style-chip.active { background: rgba(139, 92, 246, 0.15); border-color: var(--primary); color: var(--primary); }
+
+        .settings-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .batch-seed-row { display: grid; grid-template-columns: 100px 1fr; gap: 12px; }
+        .batch-ctrl { display: flex; gap: 4px; }
+        .batch-btn { background: var(--bg-input); border: 1px solid var(--border); color: var(--text); width: 32px; border-radius: 8px; cursor: pointer; }
+
+        .btn-generate {
+            width: 100%; padding: 16px; background: linear-gradient(135deg, #8b5cf6, #d946ef);
+            border: none; border-radius: 12px; color: white; font-size: 16px; font-weight: 700;
+            cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px;
+            box-shadow: 0 4px 20px rgba(139, 92, 246, 0.4); transition: transform 0.2s; margin-top: 10px;
+        }
+        .btn-generate:hover { transform: translateY(-2px); }
+        .btn-generate:disabled { opacity: 0.6; transform: none; }
+
+        .flex { display: flex; gap: 10px; }
+        .w-full { width: 100%; }
+
+        /* Modals */
+        .modal-overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 2000;
+            display: none; justify-content: center; align-items: center; backdrop-filter: blur(5px);
+        }
+        .modal-overlay.active { display: flex; }
+        
+        .lightbox-content { width: 90%; max-width: 1200px; height: 85vh; display: flex; gap: 20px; }
+        .lb-img-wrap { flex: 1; display: flex; align-items: center; justify-content: center; background: #000; border-radius: 16px; }
+        .lb-img { max-width: 100%; max-height: 100%; border-radius: 8px; }
+        .lb-sidebar {
+            width: 350px; background: var(--bg-card); border-radius: 16px; padding: 20px;
+            display: flex; flex-direction: column; gap: 16px; border: 1px solid var(--border);
+        }
+
+        /* Loader */
+        .loader-overlay {
+            position: fixed; inset: 0; background: rgba(15, 17, 21, 0.9); z-index: 3000;
+            display: none; flex-direction: column; align-items: center; justify-content: center;
+        }
+        .spinner {
+            width: 40px; height: 40px; border: 4px solid var(--border);
+            border-top-color: var(--primary); border-radius: 50%;
+            animation: spin 1s linear infinite; margin-bottom: 16px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .toast {
+            position: fixed; bottom: 20px; right: 20px;
+            background: var(--bg-card); border: 1px solid var(--primary);
+            padding: 12px 20px; border-radius: 10px; color: white;
+            transform: translateY(100px); transition: 0.3s; z-index: 4000;
+        }
+        .toast.active { transform: translateY(0); }
+
+        .btn { padding: 8px 16px; border-radius: 8px; border: 1px solid transparent; cursor: pointer; font-weight: 600; }
+        .btn-ghost { background: transparent; border-color: var(--border); color: var(--text-muted); }
+        .btn-ghost:hover { border-color: var(--text); color: var(--text); }
+        .btn-danger { background: rgba(244, 63, 94, 0.1); color: var(--accent); border-color: rgba(244, 63, 94, 0.2); }
+        .btn-primary-sm { background: var(--primary); color: white; border:none; }
+
+    </style>
+</head>
+<body>
+
+    <div class="app-container">
+        
+        <!-- Left: Gallery -->
+        <div class="main-content">
+            <header class="header">
+                <div class="logo">
+                    <div class="logo-icon">🎨</div>
+                    <h1>AI Studio <span style="font-size: 10px; background: var(--primary); color: white; padding: 2px 6px; border-radius: 10px; vertical-align: middle;">PRO</span></h1>
+                </div>
+                <div>
+                    <button class="btn btn-ghost" onclick="openModal('settingsModal')">⚙️ Settings</button>
+                </div>
+            </header>
+
+            <div class="gallery-card">
+                <div class="gallery-header">
+                    <h3>🖼️ Recent Creations</h3>
+                    <div class="flex">
+                        <button class="btn btn-ghost" onclick="renderGallery('all')">All</button>
+                        <button class="btn btn-ghost" onclick="renderGallery('favorites')">❤️ Favorites</button>
+                    </div>
+                </div>
+                <div class="gallery-scroll">
+                    <div id="galleryGrid" class="gallery-grid"></div>
+                    <div id="emptyState" style="text-align:center; padding: 40px; color: var(--text-muted); display:none;">
+                        <h2>✨</h2>
+                        <p>No images yet. Start creating!</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right: Sidebar Controls -->
+        <div class="sidebar">
+            
+            <!-- 1. Stats -->
+            <div class="stats-row">
+                <div class="stat-card">
+                    <div class="stat-val" id="statGenerated">0</div>
+                    <div class="stat-label">Generated</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-val" id="statFavorites">0</div>
+                    <div class="stat-label">Favorites</div>
+                </div>
+            </div>
+
+            <!-- 2. Tabs -->
+            <div class="tabs">
+                <div class="tab active" onclick="switchInputMode('text')">📝 Text</div>
+                <div class="tab" onclick="switchInputMode('youtube')">🎬 YouTube</div>
+            </div>
+
+            <!-- 3. Main Form -->
+            <div class="controls">
+                
+                <!-- YouTube Section (Conditionally Visible) -->
+                <div id="youtubeSection">
+                    <div class="section-header">🔍 Thumbnail Analyzer</div>
+                    <div class="input-group">
+                        <label>YouTube Video URL</label>
+                        <div class="flex">
+                            <input type="text" id="ytInput" placeholder="https://youtube.com/watch?v=...">
+                            <button class="btn-fetch" onclick="fetchThumbnail()">Fetch</button>
+                        </div>
+                    </div>
+                    <div class="yt-preview" id="ytPreview" style="display:none;">
+                        <img id="thumbImg" src="">
+                        <button class="btn-analyze" onclick="analyzeThumbnail()">
+                            ✨ Analyze & Generate Prompt
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Prompt Section (Always Visible) -->
+                <div class="input-group">
+                    <label>Prompt</label>
+                    <div class="prompt-wrapper">
+                        <textarea id="promptInput" rows="5" placeholder="Describe your image...">A majestic lion wearing a space suit on Mars, cinematic lighting, hyperrealistic, 8k</textarea>
+                        <div class="prompt-actions">
+                            <button class="p-btn" title="Random" onclick="randomPrompt()">🎲</button>
+                            <button class="p-btn" title="Copy" onclick="copyPrompt()">📋</button>
+                            <button class="p-btn" title="Clear" onclick="document.getElementById('promptInput').value=''">🗑️</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label>Negative Prompt (Optional)</label>
+                    <input type="text" id="negativePrompt" placeholder="blur, distorted, text, watermark">
+                </div>
+
+                <div class="input-group">
+                    <label>Style Presets</label>
+                    <div class="style-grid" id="styleGrid">
+                        <div class="style-chip" onclick="toggleStyle(this, 'cinematic')">🎬 Cinematic</div>
+                        <div class="style-chip" onclick="toggleStyle(this, 'anime')">🌸 Anime</div>
+                        <div class="style-chip" onclick="toggleStyle(this, 'realistic')">📷 Realistic</div>
+                        <div class="style-chip" onclick="toggleStyle(this, 'fantasy')">🧙 Fantasy</div>
+                        <div class="style-chip" onclick="toggleStyle(this, 'cyberpunk')">🤖 Cyberpunk</div>
+                        <div class="style-chip" onclick="toggleStyle(this, '3d')">💎 3D Render</div>
+                    </div>
+                </div>
+
+                <div class="settings-row">
+                    <div class="input-group">
+                        <label>Model</label>
+                        <select id="modelSelect">
+                            <!-- Populated JS -->
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>Size</label>
+                        <select id="sizeSelect">
+                            <option value="1344x768">16:9 Wide</option>
+                            <option value="1024x1024">1:1 Square</option>
+                            <option value="768x1344">9:16 Tall</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="batch-seed-row">
+                    <div class="input-group">
+                        <label>Batch Size</label>
+                        <div class="batch-ctrl">
+                            <button class="batch-btn" onclick="adjBatch(-1)">-</button>
+                            <input type="text" id="batchSize" value="1" readonly style="text-align:center;">
+                            <button class="batch-btn" onclick="adjBatch(1)">+</button>
+                        </div>
+                    </div>
+                    <div class="input-group">
+                        <label>Seed (Try: 99999)</label>
+                        <input type="text" id="seedInput" placeholder="Random">
+                    </div>
+                </div>
+
+                <div style="margin-top: 10px; cursor: pointer; color: var(--text-muted); font-size: 12px; display: flex; align-items: center; gap: 5px;">
+                    <span>⚡ Advanced Options</span> <span style="font-size: 8px;">▼</span>
+                </div>
+
+                <button class="btn-generate" onclick="generateImages()">
+                    ✨ Generate Image
+                </button>
+                <div style="text-align: center; margin-top: 8px; font-size: 10px; color: var(--text-muted);">
+                    <span style="background:var(--bg-input); padding: 2px 4px; border-radius: 4px; border: 1px solid var(--border);">ctrl</span> + <span style="background:var(--bg-input); padding: 2px 4px; border-radius: 4px; border: 1px solid var(--border);">enter</span> to generate
+                </div>
+
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Modals -->
+    
+    <!-- Lightbox -->
+    <div class="modal-overlay" id="lightbox">
+        <button style="position:absolute; top:20px; right:20px; background:none; border:none; color:white; font-size:30px; cursor:pointer;" onclick="closeLightbox()">×</button>
+        <div class="lightbox-content">
+            <div class="lb-img-wrap">
+                <img id="lbImage" class="lb-img" src="">
+            </div>
+            <div class="lb-sidebar">
+                <h3>Image Details</h3>
+                <div style="background:var(--bg-input); padding:10px; border-radius:8px; font-size:12px; color:var(--text-muted); max-height:150px; overflow-y:auto;" id="lbPrompt"></div>
+                <div style="margin-top:auto; display:flex; flex-direction:column; gap:10px;">
+                    <button class="btn btn-primary-sm" style="padding:12px;" onclick="openFaceSwap()">🎭 Swap Face</button>
+                    <div class="flex">
+                        <button class="btn btn-ghost w-full" onclick="downloadCurrent()">⬇️ Download</button>
+                        <button class="btn btn-danger w-full" onclick="deleteCurrent()">🗑️ Delete</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Face Swap Upload -->
+    <div class="modal-overlay" id="faceSwapModal">
+        <div style="background:var(--bg-card); padding:24px; border-radius:16px; width:400px; border:1px solid var(--border);">
+            <h3>🎭 Upload Face</h3>
+            <p style="color:var(--text-muted); font-size:12px; margin: 10px 0 20px;">Upload a clear face photo to swap onto the generated image.</p>
+            
+            <input type="file" id="faceInput" hidden onchange="previewFace(event)">
+            <div onclick="document.getElementById('faceInput').click()" style="border:2px dashed var(--border); padding:30px; text-align:center; border-radius:12px; cursor:pointer; margin-bottom:20px;">
+                <img id="facePreview" style="max-height:150px; display:none; margin:0 auto; border-radius:8px;">
+                <div id="facePlaceholder">
+                    <div style="font-size:24px;">👤</div>
+                    <div style="font-size:12px; margin-top:8px;">Click to upload</div>
+                </div>
+            </div>
+
+            <div class="flex" style="justify-content:flex-end;">
+                <button class="btn btn-ghost" onclick="closeModal('faceSwapModal')">Cancel</button>
+                <button class="btn btn-primary-sm" onclick="startFaceSwap()">Start Swap</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings -->
+    <div class="modal-overlay" id="settingsModal">
+        <div style="background:var(--bg-card); padding:24px; border-radius:16px; width:500px; border:1px solid var(--border);">
+            <div class="flex" style="justify-content:space-between; margin-bottom:20px;">
+                <h3>⚙️ Settings</h3>
+                <button class="btn-ghost" style="border:none;" onclick="closeModal('settingsModal')">×</button>
+            </div>
+            
+            <div style="max-height: 400px; overflow-y:auto; padding-right:10px;">
+                <div class="section-header">API KEYS</div>
+                <div class="input-group">
+                    <label>A4F Key (Gen)</label>
+                    <input type="password" id="setImgKey">
+                </div>
+                <div class="input-group">
+                    <label>OpenRouter Key (Analyze)</label>
+                    <input type="password" id="setAnalyzeKey">
+                </div>
+                <div class="input-group">
+                    <label>ImgBB Key (Uploads)</label>
+                    <input type="password" id="setImgbbKey">
+                </div>
+                <div class="input-group">
+                    <label>PiAPI Key (Swap)</label>
+                    <input type="password" id="setPiApiKey">
+                </div>
+
+                <div class="section-header" style="margin-top:20px;">SEED STYLES MAP (JSON)</div>
+                <p style="font-size:10px; color:var(--text-muted); margin-bottom:8px;">Map specific seed numbers to template prompts. Use [PROMPT] as placeholder.</p>
+                <textarea id="setSeedMap" rows="6" style="font-family:monospace; font-size:11px;"></textarea>
+            </div>
+
+            <div style="margin-top:20px; display:flex; justify-content:space-between;">
+                <button class="btn btn-danger" onclick="clearData()">Clear History</button>
+                <button class="btn btn-primary-sm" onclick="saveSettings()">Save Changes</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loader -->
+    <div class="loader-overlay" id="loader">
+        <div class="spinner"></div>
+        <h3 id="loaderTitle">Processing</h3>
+        <p id="loaderText" style="color:var(--text-muted); font-size:12px;">Please wait...</p>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast" id="toast">✅ Action Successful</div>
+
+    <script>
+        // --- CONFIG ---
+        const DEFAULT_IMG_KEY = "ddc-a4f-95f67b7a05424ba6ae32e4caf75c1168";
+        const DEFAULT_OR_KEY = "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";
+        
+        // Image Generation Models
+        const MODELS = [
+            "provider-8/firefrost",
+            "provider-8/z-image",
+            "provider-4/flux-schnell",
+            "provider-8/imagen-3",
+            "provider-5/flux-dev"
+        ];
+
+        // Analyzer Models (Fallback Sequence)
+        const ANALYZER_MODELS = [
+            "google/gemma-3-27b-it:free", 
+            "nvidia/nemotron-nano-12b-v2-vl:free",
+            "qwen/qwen-2-vl-7b-instruct:free",
+            "meta-llama/llama-3.2-11b-vision-instruct:free",
+            "qwen/qwen-2-vl-7b-instruct:free"
+        ];
+
+        const DEFAULT_SEED_MAP = {
+            "99999": "Stylized 3D polygonal animation of [PROMPT], smooth rounded geometry, soft plastic-like surfaces, simplified character models with minimal facial detail, low-poly environment, cinematic lighting with strong contrast and rim glow, muted neutral tones with selective color highlights, minimalist textures, shallow depth of field, camera motion in slow pan or dolly, rendered in non-photorealistic CGI style similar to animation cutscenes or simulation visuals"
+        };
+        
+        // --- STATE ---
+        let state = {
+            imgKey: DEFAULT_IMG_KEY,
+            analyzeKey: DEFAULT_OR_KEY,
+            imgbbKey: "97ae6c149e1878416f1c6f8039960b22",
+            piApiKey: "da8e19ab8125432069de7a89f592706b0c3d799655b750fa9ef3419f6ce88a73",
+            seedMap: DEFAULT_SEED_MAP,
+            history: [],
+            currentImg: null,
+            faceFile: null,
+            activeStyles: [],
+            thumbUrl: ""
+        };
+
+        const STYLES = {
+            cinematic: ", cinematic lighting, dramatic atmosphere, depth of field, 8k",
+            anime: ", anime style, vibrant colors, detailed linework, studio ghibli",
+            realistic: ", photorealistic, hyperrealistic, 8k UHD, raw photo",
+            fantasy: ", fantasy art, ethereal, magical, epic composition",
+            cyberpunk: ", cyberpunk, neon lights, futuristic, sci-fi",
+            "3d": ", 3D render, octane render, unreal engine 5"
+        };
+
+        // --- INIT ---
+        document.addEventListener('DOMContentLoaded', () => {
+            loadData();
+            initUI();
+            updateStats();
+            renderGallery();
+        });
+
+        function loadData() {
+            const d = JSON.parse(localStorage.getItem('ai_studio_db') || '{}');
+            if(d.history) state.history = d.history;
+            state.imgKey = d.imgKey || DEFAULT_IMG_KEY;
+            state.analyzeKey = d.analyzeKey || DEFAULT_OR_KEY;
+            state.imgbbKey = d.imgbbKey || state.imgbbKey;
+            state.piApiKey = d.piApiKey || state.piApiKey;
+            state.seedMap = d.seedMap || DEFAULT_SEED_MAP;
+
+            // Fill Settings
+            document.getElementById('setImgKey').value = state.imgKey;
+            document.getElementById('setAnalyzeKey').value = state.analyzeKey;
+            document.getElementById('setImgbbKey').value = state.imgbbKey;
+            document.getElementById('setPiApiKey').value = state.piApiKey;
+            document.getElementById('setSeedMap').value = JSON.stringify(state.seedMap, null, 2);
+        }
+
+        function saveData() {
+            localStorage.setItem('ai_studio_db', JSON.stringify({
+                history: state.history,
+                imgKey: state.imgKey,
+                analyzeKey: state.analyzeKey,
+                imgbbKey: state.imgbbKey,
+                piApiKey: state.piApiKey,
+                seedMap: state.seedMap
+            }));
+            updateStats();
+        }
+
+        function initUI() {
+            // Models
+            const sel = document.getElementById('modelSelect');
+            MODELS.forEach(m => {
+                const opt = document.createElement('option');
+                opt.value = m;
+                let label = m.split('/')[1].toUpperCase().replace(/-/g, ' ');
+                if(label.includes('Z IMAGE')) label = "⭐ Z IMAGE (PREMIUM)";
+                if(label.includes('FIREFROST')) label = "🔥 FIREFROST";
+                opt.textContent = label;
+                sel.appendChild(opt);
+            });
+            // Shortcuts
+            document.addEventListener('keydown', (e) => {
+                if(e.ctrlKey && e.key === 'Enter') generateImages();
+            });
+        }
+
+        function updateStats() {
+            document.getElementById('statGenerated').textContent = state.history.length;
+            document.getElementById('statFavorites').textContent = state.history.filter(i => i.fav).length;
+        }
+
+        // --- TABS & LAYOUT ---
+        function switchInputMode(mode) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            if(mode === 'text') {
+                document.querySelectorAll('.tab')[0].classList.add('active');
+                document.getElementById('youtubeSection').style.display = 'none';
+            } else {
+                document.querySelectorAll('.tab')[1].classList.add('active');
+                document.getElementById('youtubeSection').style.display = 'block';
+            }
+        }
+
+        function toggleStyle(el, style) {
+            el.classList.toggle('active');
+            if(state.activeStyles.includes(style)) {
+                state.activeStyles = state.activeStyles.filter(s => s !== style);
+            } else {
+                state.activeStyles.push(style);
+            }
+        }
+
+        function randomPrompt() {
+            const prompts = [
+                "A cyberpunk samurai standing in neon rain",
+                "A cozy cabin in a snowy forest at twilight",
+                "A futuristic city floating in the clouds",
+                "An ancient dragon guarding a mountain of gold"
+            ];
+            document.getElementById('promptInput').value = prompts[Math.floor(Math.random() * prompts.length)];
+        }
+
+        function copyPrompt() {
+            navigator.clipboard.writeText(document.getElementById('promptInput').value);
+            showToast("Prompt copied!");
+        }
+
+        function adjBatch(n) {
+            const el = document.getElementById('batchSize');
+            let val = parseInt(el.value) + n;
+            if(val < 1) val = 1;
+            if(val > 4) val = 4;
+            el.value = val;
+        }
+
+        // --- YOUTUBE ANALYZER ---
+        function fetchThumbnail() {
+            const url = document.getElementById('ytInput').value;
+            const id = url.match(/(?:youtu\.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*)/)?.[1];
+            if(id && id.length === 11) {
+                state.thumbUrl = `https://img.youtube.com/vi/${id}/maxresdefault.jpg`;
+                document.getElementById('thumbImg').src = state.thumbUrl;
+                document.getElementById('ytPreview').style.display = 'block';
+            } else {
+                showToast("Invalid YouTube URL");
+            }
+        }
+
+        async function analyzeThumbnail() {
+            if (!state.thumbUrl) return showToast("Fetch a thumbnail first");
+            
+            showLoader("Analyzing Vision", "Connecting to AI Vision models...");
+            let success = false;
+            
+            // Iterate through models fallback list
+            for (const model of ANALYZER_MODELS) {
+                if (success) break;
+                
+                try {
+                    // Update UI to show which model is trying
+                    const modelName = model.split('/')[1].split(':')[0];
+                    document.getElementById('loaderText').textContent = `Trying model: ${modelName}...`;
+
+                    const resp = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+                        method: 'POST',
+                        headers: { 'Authorization': `Bearer ${state.analyzeKey}`, 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            model: model,
+                            messages: [{
+                                role: 'user',
+                                content: [
+                                    { 
+                                        type: 'text', 
+                                        text: 'You are a professional AI thumbnail analyst and designer; analyze the uploaded thumbnail and reverse-engineer it into a SAME-TO-SAME, highly accurate AI image generation prompt for Midjourney, SDXL, DALL·E, or Leonardo, fully describing the subject (gender, age, ethnicity if visible, facial expression, emotion, pose, body language, clothing, colors, accessories, hairstyle, skin tone), composition (camera type, lens, angle, framing, depth of field, subject placement, visual hierarchy, focal points, empty space for text/logos), lighting (type, direction, intensity, softness/hardness, shadows, highlights, cinematic effects), environment/background (location, props, background details, perspective, weather, time of day), style and mood (hyper-realistic, cinematic, vibrant for thumbnails, emotional tone, color grading, eye-catching composition), technical quality (ultra-high resolution, HDR, 4K/8K, sharp focus, realistic textures, photorealistic), and visible text/logos (exact wording, font, size, color, style, alignment, spacing, effects, shadows, highlights, placement), include AI optimization keywords such as masterpiece, best quality, ultra-detailed, photorealistic, cinematic lighting, high contrast, volumetric light, and OUTPUT ONLY one final English prompt as a single paragraph with no explanations or commentary ,give detail prompt.'
+                                    },
+                                    { type: 'image_url', image_url: { url: state.thumbUrl } }
+                                ]
+                            }]
+                        })
+                    });
+
+                    if (!resp.ok) throw new Error("API Error");
+
+                    const data = await resp.json();
+                    if(data.choices?.[0]?.message?.content) {
+                        document.getElementById('promptInput').value = data.choices[0].message.content;
+                        showToast("High-Detail Prompt Generated!");
+                        // Scroll to prompt
+                        window.scrollTo({ top: document.getElementById('promptInput').offsetTop - 100, behavior: 'smooth' });
+                        success = true;
+                    } else {
+                        throw new Error("Empty response");
+                    }
+                } catch(e) {
+                    console.warn(`Model ${model} failed, trying next...`);
+                }
+            }
+
+            hideLoader();
+            if (!success) {
+                showToast("All vision models failed. Check API Key or try again.");
+            }
+        }
+
+        // --- GENERATION ---
+        async function generateImages() {
+            const promptRaw = document.getElementById('promptInput').value;
+            if(!promptRaw) return showToast("Enter a prompt");
+
+            let prompt = promptRaw;
+            
+            // 1. Check for Seed Mapping (99999 Logic)
+            const seedInput = document.getElementById('seedInput').value.trim();
+            if(state.seedMap[seedInput]) {
+                prompt = state.seedMap[seedInput].replace('[PROMPT]', promptRaw);
+                console.log("Applied Seed Style:", prompt);
+            } else {
+                state.activeStyles.forEach(s => prompt += STYLES[s]);
+            }
+            
+            const batch = parseInt(document.getElementById('batchSize').value);
+            const model = document.getElementById('modelSelect').value;
+            const size = document.getElementById('sizeSelect').value;
+
+            showLoader("Generating", `Creating ${batch} image(s)...`);
+
+            try {
+                for(let i=0; i<batch; i++) {
+                    const body = {
+                        model: model,
+                        prompt: prompt,
+                        negative_prompt: document.getElementById('negativePrompt').value,
+                        n: 1,
+                        size: size
+                    };
+                    if(!isNaN(parseInt(seedInput))) {
+                        body.seed = parseInt(seedInput) + i; 
+                    }
+
+                    const resp = await fetch('https://api.a4f.co/v1/images/generations', {
+                        method: 'POST',
+                        headers: { 'Authorization': `Bearer ${state.imgKey}`, 'Content-Type': 'application/json' },
+                        body: JSON.stringify(body)
+                    });
+                    const data = await resp.json();
+                    if(data.data?.[0]?.url) {
+                        state.history.unshift({
+                            id: Date.now() + i,
+                            url: data.data[0].url,
+                            prompt: promptRaw,
+                            finalPrompt: prompt,
+                            date: new Date().toISOString(),
+                            fav: false,
+                            swapped: false
+                        });
+                    } else { throw new Error("API Error: " + JSON.stringify(data)); }
+                }
+                saveData();
+                renderGallery();
+                showToast("Generation Complete!");
+            } catch(e) {
+                showToast("Generation Failed");
+                console.error(e);
+            } finally { hideLoader(); }
+        }
+
+        // --- FACE SWAP ---
+        function openFaceSwap() {
+            closeModal('lightbox');
+            document.getElementById('faceSwapModal').classList.add('active');
+            state.faceFile = null;
+            document.getElementById('facePreview').style.display='none';
+            document.getElementById('facePlaceholder').style.display='block';
+        }
+
+        function previewFace(e) {
+            const file = e.target.files[0];
+            if(file) {
+                state.faceFile = file;
+                const r = new FileReader();
+                r.onload = (ev) => {
+                    document.getElementById('facePreview').src = ev.target.result;
+                    document.getElementById('facePreview').style.display='block';
+                    document.getElementById('facePlaceholder').style.display='none';
+                };
+                r.readAsDataURL(file);
+            }
+        }
+
+        async function startFaceSwap() {
+            if(!state.faceFile) return showToast("Upload a face first");
+            
+            closeModal('faceSwapModal');
+            showLoader("Swapping", "Processing AI Face Swap...");
+
+            try {
+                const fd = new FormData();
+                fd.append('image', state.faceFile);
+                const bbResp = await fetch(`https://api.imgbb.com/1/upload?key=${state.imgbbKey}`, { method: 'POST', body: fd });
+                const bbData = await bbResp.json();
+                const faceUrl = bbData.data.url;
+
+                const piResp = await fetch('https://api.piapi.ai/api/v1/task', {
+                    method: 'POST',
+                    headers: { 'x-api-key': state.piApiKey, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        model: "Qubico/image-toolkit",
+                        task_type: "face-swap",
+                        input: { target_image: state.currentImg.url, swap_image: faceUrl }
+                    })
+                });
+                const piData = await piResp.json();
+                const taskId = piData.data.task_id;
+
+                let resultUrl = null;
+                for(let i=0; i<30; i++) {
+                    await new Promise(r => setTimeout(r, 2000));
+                    const check = await fetch(`https://api.piapi.ai/api/v1/task/${taskId}`, { headers: {'x-api-key': state.piApiKey}});
+                    const res = await check.json();
+                    if(res.data.status === 'completed') {
+                        resultUrl = res.data.output.image_url || res.data.output.image;
+                        break;
+                    }
+                }
+
+                if(resultUrl) {
+                    state.history.unshift({
+                        id: Date.now(),
+                        url: resultUrl,
+                        prompt: "Face Swap: " + state.currentImg.prompt,
+                        date: new Date().toISOString(),
+                        fav: false,
+                        swapped: true
+                    });
+                    saveData();
+                    renderGallery();
+                    showToast("Swap Complete!");
+                } else { throw new Error("Timeout"); }
+
+            } catch(e) {
+                showToast("Swap Failed");
+                console.error(e);
+            } finally { hideLoader(); }
+        }
+
+        // --- GALLERY & MODALS ---
+        function renderGallery(filter = 'all') {
+            const grid = document.getElementById('galleryGrid');
+            grid.innerHTML = '';
+            const items = filter === 'favorites' ? state.history.filter(i => i.fav) : state.history;
+            
+            if(items.length === 0) {
+                document.getElementById('emptyState').style.display='block';
+            } else {
+                document.getElementById('emptyState').style.display='none';
+                items.forEach(img => {
+                    const el = document.createElement('div');
+                    el.className = 'gallery-item';
+                    el.onclick = () => openLightbox(img.id);
+                    el.innerHTML = `
+                        <img src="${img.url}" loading="lazy">
+                        <div class="gallery-overlay">
+                            ${img.swapped ? '<span style="position:absolute; top:8px; left:8px; background:var(--primary); font-size:10px; padding:2px 6px; border-radius:4px; color:white;">SWAP</span>' : ''}
+                            <button onclick="event.stopPropagation(); toggleFav(${img.id})" style="background:none; border:none; font-size:20px; cursor:pointer;">
+                                ${img.fav ? '❤️' : '🤍'}
+                            </button>
+                        </div>
+                    `;
+                    grid.appendChild(el);
+                });
+            }
+        }
+
+        function toggleFav(id) {
+            const img = state.history.find(i => i.id === id);
+            if(img) {
+                img.fav = !img.fav;
+                saveData();
+                renderGallery();
+            }
+        }
+
+        function openLightbox(id) {
+            const img = state.history.find(i => i.id === id);
+            state.currentImg = img;
+            document.getElementById('lbImage').src = img.url;
+            document.getElementById('lbPrompt').textContent = img.prompt;
+            document.getElementById('lightbox').classList.add('active');
+        }
+        function closeLightbox() { document.getElementById('lightbox').classList.remove('active'); }
+
+        function downloadCurrent() {
+            const a = document.createElement('a');
+            a.href = state.currentImg.url;
+            a.target = '_blank';
+            a.download = `ai_gen_${state.currentImg.id}.png`;
+            a.click();
+        }
+
+        function deleteCurrent() {
+            state.history = state.history.filter(i => i.id !== state.currentImg.id);
+            saveData();
+            renderGallery();
+            closeLightbox();
+        }
+
+        function openModal(id) { document.getElementById(id).classList.add('active'); }
+        function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+        
+        function saveSettings() {
+            state.imgKey = document.getElementById('setImgKey').value;
+            state.analyzeKey = document.getElementById('setAnalyzeKey').value;
+            state.imgbbKey = document.getElementById('setImgbbKey').value;
+            state.piApiKey = document.getElementById('setPiApiKey').value;
+            
+            try {
+                const mapVal = document.getElementById('setSeedMap').value;
+                state.seedMap = JSON.parse(mapVal);
+            } catch(e) {
+                alert("Invalid JSON for Seed Map");
+                return;
+            }
+
+            saveData();
+            closeModal('settingsModal');
+            showToast("Settings Saved");
+        }
+
+        function clearData() {
+            if(confirm("Delete all history?")) {
+                state.history = [];
+                saveData();
+                renderGallery();
+                closeModal('settingsModal');
+            }
+        }
+
+        function showLoader(title, text) {
+            document.getElementById('loaderTitle').textContent = title;
+            document.getElementById('loaderText').textContent = text;
+            document.getElementById('loader').style.display='flex';
+        }
+        function hideLoader() { document.getElementById('loader').style.display='none'; }
+
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.classList.add('active');
+            setTimeout(() => t.classList.remove('active'), 3000);
+        }
+
+    </script>
+</body>
+</html>
